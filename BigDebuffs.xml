@@ -18,7 +18,7 @@
 		<HighlightTexture/>
 		<PushedTexture/>
 		<Frames>
-			<Cooldown name="$parentCooldown" inherits="CooldownFrameTemplate" parentKey="cooldown" reverse="true" drawBling="false" hidden="true">
+			<Cooldown name="$parentCooldown" parentKey="cooldown" reverse="false" hidden="true">
 				<Size x="36" y="36"/>
 				<Anchors>
 					<Anchor point="CENTER" x="0" y="-1"/>
@@ -33,20 +33,6 @@
 				self:StopMovingOrSizing()
 				BigDebuffs:SaveUnitFramePosition(self)
 			</OnDragStop>
-			<OnUpdate>
-				if ( self:IsMouseOver() and BigDebuffs.db.profile.unitFrames.tooltips ) then
-					GameTooltip:SetOwner(self, "ANCHOR_RIGHT", 0, 0);
-					if self.interrupt then
-						GameTooltip:SetSpellByID(self.interrupt)
-					elseif self.buff then
-						GameTooltip:SetUnitBuff(self.unit, self:GetID());
-					else
-						GameTooltip:SetUnitDebuff(self.unit, self:GetID());
-					end
-				elseif GameTooltip:IsOwned(self) then
-					GameTooltip:Hide();
-				end
-			</OnUpdate>
 		</Scripts>
 	</Button>
 </Ui>

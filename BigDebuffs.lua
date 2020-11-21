@@ -555,8 +555,8 @@ local anchors = {
 		units = {
 			player = "PlayerPortrait",
 			pet = "PetPortrait",
-			target = "TargetFramePortrait",
-			focus = "FocusFramePortrait",
+			target = "TargetPortrait",
+			focus = "FocusPortrait",
 			party1 = "PartyMemberFrame1Portrait",
 			party2 = "PartyMemberFrame2Portrait",
 			party3 = "PartyMemberFrame3Portrait",
@@ -612,6 +612,8 @@ function BigDebuffs:AttachUnitFrame(unit)
 		frame.cooldown:SetParent(frame.cooldownContainer)
 		frame.cooldown:SetAllPoints()
 		frame.cooldown:SetAlpha(0.9)
+		frame.cooldown:SetReverse(true)
+		
 		
 		frame:RegisterForDrag("LeftButton")
 		frame:SetMovable(true)
@@ -626,7 +628,6 @@ function BigDebuffs:AttachUnitFrame(unit)
 	frame.blizzard = nil
 
 	local config = self.db.profile.unitFrames[unit:gsub("%d", "")]
-
 	if config.anchor == "auto" then
 		-- Find a frame to attach to
 		for k,v in pairs(anchors) do
@@ -637,7 +638,6 @@ function BigDebuffs:AttachUnitFrame(unit)
 				else
 					anchor = _G[v.units[unit]]
 				end
-
 				if anchor then
 					frame.anchor, frame.parent, frame.noPortrait = anchor, parent, noPortrait
 					if v.noPortrait then frame.noPortrait = true end
@@ -654,9 +654,9 @@ function BigDebuffs:AttachUnitFrame(unit)
 			-- Blizzard Frame
 			frame:SetParent(frame.anchor:GetParent())
 			frame:SetFrameLevel(frame.anchor:GetParent():GetFrameLevel())
-			frame.cooldown:SetFrameLevel(frame.anchor:GetParent():GetFrameLevel()-1)
-			frame.cooldown:SetHeight(frame.anchor:GetHeight()-9)
-			frame.cooldown:SetWidth(frame.anchor:GetWidth()-9)
+			frame.cooldownContainer:SetFrameLevel(frame.anchor:GetParent():GetFrameLevel()-1)
+			frame.cooldownContainer:SetHeight(frame.anchor:GetHeight()-9)
+			frame.cooldownContainer:SetWidth(frame.anchor:GetWidth()-9)
 			frame.anchor:SetDrawLayer("BACKGROUND")
 		else
 			frame:SetParent(frame.parent and frame.parent or frame.anchor)
@@ -684,8 +684,8 @@ function BigDebuffs:AttachUnitFrame(unit)
 		-- Manual
 		frame:SetParent(UIParent)
 		frame:ClearAllPoints()
-		frame.cooldown:SetHeight(frame:GetHeight())
-		frame.cooldown:SetWidth(frame:GetWidth())
+		frame.cooldownContainer:SetHeight(frame:GetHeight())
+		frame.cooldownContainer:SetWidth(frame:GetWidth())
 		
 		if not self.db.profile.unitFrames[unit:gsub("%d", "")] then self.db.profile.unitFrames[unit:gsub("%d", "")] = {} end
 
@@ -722,7 +722,7 @@ end
 local function UnitDebuffTest(unit, index)
 	local debuff = TestDebuffs[index]
 	if not debuff then return end
-	return GetSpellInfo(debuff[1]), nil, debuff[2], 0, "Magic", 50, GetTime()+50, nil, nil, nil, debuff[1]
+	return GetSpellInfo(debuff[1]), nil, debuff[2], 0, "Magic", 50, 50, nil
 end
 
 function BigDebuffs:OnEnable()
@@ -790,7 +790,8 @@ function BigDebuffs:UNIT_SPELLCAST_FAILED(_,unit, _, _, spellid)
 	if self.interrupts[guid] == nil then
 		self.interrupts[guid] = {}
 		BigDebuffs:CancelTimer(self.interrupts[guid].timer)
-		self.interrupts[guid].timer = BigDebuffs:ScheduleTimer(self.ClearInterruptGUID, 30, self, guid)
+		local pack = {self, guid}
+		self.interrupts[guid].timer = BigDebuffs:ScheduleTimer(self.ClearInterruptGUID, 30, pack)
 	end
 	self.interrupts[guid].failed = GetTime()
 end
@@ -845,7 +846,7 @@ end
 
 function BigDebuffs:ClearStanceGUID(guid)
 	if self ~= BigDebuffs then
-		self, guid = pack[1], pack[2]
+		guid, self = self[2], self[1]
 	end
 	
 	local unit = self:GetUnitFromGUID(guid)
@@ -859,7 +860,7 @@ end
 
 function BigDebuffs:UpdateInterrupt(unit, guid, spellid, duration)
 	if self ~= BigDebuffs then
-		self, unit, guid, spellid = pack[1], pack[2], pack[3], pack[4]
+		unit, guid, spellid, self = self[2], self[3], self[4], self[1]
 	end
 	
 	local t = GetTime()
@@ -894,7 +895,7 @@ end
 
 function BigDebuffs:ClearInterruptGUID(guid)
 	if self ~= BigDebuffs then
-		self, guid = pack[1], pack[2]
+		guid, self = self[2], self[1]
 	end
 
 	self.interrupts[guid] = nil
@@ -942,17 +943,17 @@ function BigDebuffs:UNIT_AURA(event, unit)
 	local UnitDebuff = BigDebuffs.test and UnitDebuffTest or UnitDebuff
 	
 	local now = GetTime()
-	local left, priority, duration, expires, icon, isAura, interrupt = 0, 0
+	local left, priority, duration, icon, isAura, interrupt = 0, 0
 	
 	for i = 1, 40 do
 		-- Check debuffs
-		local n,_, ico, _,_, d, e = UnitDebuff(unit, i)
+		local n, _, ico, _, _, d, l = UnitDebuff(unit, i)
+
 		if n then
 			if self.Spells[n] then
-				print("Spell in list")
 				local p = self:GetAuraPriority(n)
-				if p and (p > priority or (p == prio and expires and e < expires)) then
-					left = e - now
+				if p and (p > priority or (p == prio and left and l and l < left)) then
+					left = l
 					duration = d
 					isAura = true
 					priority = p
@@ -967,19 +968,17 @@ function BigDebuffs:UNIT_AURA(event, unit)
 	
 	for i = 1, 40 do
 		-- Check buffs
-		local n,_, ico, _,_, d, e  = UnitBuff(unit, i)
+		local n, _, ico, _, d, l = UnitBuff(unit, i)
+		
 		if n then
 			if self.Spells[n] then
 				local p = self:GetAuraPriority(n)
-				if p and p >= priority then
-					if p and (p > priority or (p == prio and expires and e < expires)) then
-						left = e - now
-						duration = d
-						isAura = true
-						priority = p
-						expires = e
-						icon = ico
-					end
+				if p and (p > priority or (p == prio and left and l and l < left)) then
+					left = l
+					duration = d
+					isAura = true
+					priority = p
+					icon = ico
 				end
 			end
 		else
@@ -991,12 +990,11 @@ function BigDebuffs:UNIT_AURA(event, unit)
 	local n, id, ico, d, e = self:GetInterruptFor(unit)
 	if n then
 		local p = self:GetAuraPriority(n, id)
-		if p and (p > priority or (p == prio and expires and e < expires)) then
+		if p and (p > priority or (p == prio and left and e and e-now < left)) then
 			left = e - now
 			duration = d
 			isAura = true
 			priority = p
-			expires = e
 			icon = ico
 		end
 	end
@@ -1010,10 +1008,9 @@ function BigDebuffs:UNIT_AURA(event, unit)
 			local p = self:GetAuraPriority(n, stanceId)
 			if p and p >= priority then
 				left = 0
-				duration = 0
+				duration = nil
 				isAura = true
 				priority = p
-				expires = 0
 				icon = ico
 			end
 		end
@@ -1033,8 +1030,8 @@ function BigDebuffs:UNIT_AURA(event, unit)
 			end
 		end
 		
-		if duration >= 1 then
-			frame.cooldown:SetCooldown(expires - duration, duration)
+		if duration and duration >= 1 then
+			frame.cooldown:SetCooldown(now+left-duration, duration)
 			frame.cooldownContainer:Show()
 		else 
 			frame.cooldown:SetCooldown(0, 0)
