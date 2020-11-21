@@ -588,7 +588,6 @@ function BigDebuffs:Refresh()
 	for unit, frame in pairs(self.UnitFrames) do
 		frame:Hide()
 		frame.current = nil
-		frame.cooldown.noCooldownCount = not self.db.profile.unitFrames.cooldownCount
 		self:UNIT_AURA(nil, unit)
 	end
 end
@@ -605,9 +604,11 @@ function BigDebuffs:AttachUnitFrame(unit)
 
 		frame.icon = _G[frameName.."Icon"]
 		frame.icon:SetDrawLayer("BORDER")
-
+		
 		frame.cooldownContainer = CreateFrame("Button", frameName.."CooldownContainer", frame)
 		frame.cooldownContainer:SetPoint("CENTER")
+		
+		frame.cooldown = _G[frameName.."Cooldown"]
 		frame.cooldown:SetParent(frame.cooldownContainer)
 		frame.cooldown:SetAllPoints()
 		frame.cooldown:SetAlpha(0.9)
@@ -798,7 +799,7 @@ function BigDebuffs:COMBAT_LOG_EVENT_UNFILTERED(_, ...)
 	local _, subEvent, sourceGUID, _, _, destGUID, destName, _, spellid, name = ...
 
 	if subEvent == "SPELL_CAST_SUCCESS" and self.Spells[spellid] then
-		if spellid == 2457 or spellid == 2458 or spellid == 71 then
+		if spellid == 2457 or spellid == 2458 or spellid == 71 then -- stances
 			self:UpdateStance(sourceGUID, spellid)
 		end
 	end
@@ -807,8 +808,8 @@ function BigDebuffs:COMBAT_LOG_EVENT_UNFILTERED(_, ...)
 		return
 	end
 		
-	-- UnitChannelingInfo and event orders are not the same in WotLK as later expansions, UnitChannelingInfo will always return
-	-- nil @ the time of this event (independent of whether something was kicked or not).
+	-- UnitChannelingInfo and event orders are not the same in earlier expansions as later expansions, UnitChannelingInfo 
+	-- will always return nil @ the time of this event (independent of whether something was kicked or not).
 	-- We have to track UNIT_SPELLCAST_FAILED for spell failure of the target at the (approx.) same time as we interrupted
 	-- this "could" be wrong if the interrupt misses with a <0.01 sec failure window (which depending on server tickrate might
 	-- not even be possible)
