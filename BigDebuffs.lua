@@ -605,10 +605,11 @@ function BigDebuffs:AttachUnitFrame(unit)
 
 		frame.icon = _G[frameName.."Icon"]
 		frame.icon:SetDrawLayer("BORDER")
-		
-		frame.cooldown = _G[frameName.."Cooldown"]
-		frame.cooldown:SetParent(frame)
-		frame.cooldown:SetAllPoints(frame)
+
+		frame.cooldownContainer = CreateFrame("Button", frameName.."CooldownContainer", frame)
+		frame.cooldownContainer:SetPoint("CENTER")
+		frame.cooldown:SetParent(frame.cooldownContainer)
+		frame.cooldown:SetAllPoints()
 		frame.cooldown:SetAlpha(0.9)
 		
 		frame:RegisterForDrag("LeftButton")
@@ -754,7 +755,6 @@ end
 
 -- For unit frames
 function BigDebuffs:GetAuraPriority(name, id)
-	print("Checking Prio")
 	if not self.Spells[id] and not self.Spells[name] then return end
 	
 	id = self.Spells[id] and id or name
@@ -1034,10 +1034,10 @@ function BigDebuffs:UNIT_AURA(event, unit)
 		
 		if duration >= 1 then
 			frame.cooldown:SetCooldown(expires - duration, duration)
-			frame.cooldown:Show()
+			frame.cooldownContainer:Show()
 		else 
 			frame.cooldown:SetCooldown(0, 0)
-			frame.cooldown:Hide()
+			frame.cooldownContainer:Hide()
 		end
 
 		frame:Show()
