@@ -13,7 +13,7 @@ Once the addon is finished downloading, extract the contents to your `Interface/
 ### Backport Notes
 The backport is based on BfA BigDebuffs. However, the backport does not contain any raid frame modifications (number of debuffs shown / crowd control effects) since the new raid frames do not exist in WotLK (they were implemented in Cataclysm). The backport is essentially a much improved version of LoseControl.
 
-The functionality of this AddOn is severely hampered in the TBC client and is improved massively by using the **[BuffLib][1]** Addon.
+The functionality of this AddOn is severely hampered in the TBC client and benefits greatly from using the **[BuffLib][1]** AddOn.
 
 ---
 **Contributions**
