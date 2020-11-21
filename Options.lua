@@ -13,7 +13,7 @@ local order = {
 local SpellNames = {}
 local SpellIcons = {}
 local Spells = {}
-for spellID, spell in pairs(BigDebuffs.Spells) do
+for spellName, spell in pairs(BigDebuffs.Spells) do
 	if not spell.parent then
 		Spells[spell.type] = Spells[spell.type] or {
 			name = L[spell.type],
@@ -21,22 +21,22 @@ for spellID, spell in pairs(BigDebuffs.Spells) do
 			order = order[spell.type],
 			args = {},
 		}
-		local key = "spell"..spellID
+		local key = "spell"..strreplace(spellName, " ", "_")
 		local raidFrames = spell.type == "cc" or spell.type == "roots" or spell.type == "special" or spell.type == "interrupts"
 		Spells[spell.type].args[key] = {
 			type = "group",
 			get = function(info)
 				local name = info[#info]
-				return BigDebuffs.db.profile.spells[spellID] and BigDebuffs.db.profile.spells[spellID][name]
+				return BigDebuffs.db.profile.spells[spellName] and BigDebuffs.db.profile.spells[spellName][name]
 			end,
 			set = function(info, value)
 				local name = info[#info]
-				BigDebuffs.db.profile.spells[spellID] = BigDebuffs.db.profile.spells[spellID] or {}
-				BigDebuffs.db.profile.spells[spellID][name] = value
+				BigDebuffs.db.profile.spells[spellName] = BigDebuffs.db.profile.spells[spellName] or {}
+				BigDebuffs.db.profile.spells[spellName][name] = value
 				BigDebuffs:Refresh()
 			end,
-			name = function(info) local name = SpellNames[spellID] or GetSpellInfo(spellID) or spellID SpellNames[spellID] = name return name end,
-			icon = function() local icon = SpellIcons[spellID] or select(3,GetSpellInfo(spellID)) SpellIcons[spellID] = icon return icon end,
+			name = function(info) local name = SpellNames[spellName] or GetSpellInfo(spellName) or spellName SpellNames[spellName] = name; name = strreplace(name, "_", " "); return name end,
+			icon = function() local icon = SpellIcons[spellName] or select(3,GetSpellInfo(spellName)) SpellIcons[spellName] = icon return icon end,
 			args = {
 				visibility = {
 					order = 1,
@@ -45,21 +45,21 @@ for spellID, spell in pairs(BigDebuffs.Spells) do
 					inline = true,
 					get = function(info)
 						local name = info[#info]
-						local value = (BigDebuffs.db.profile.spells[spellID] and BigDebuffs.db.profile.spells[spellID][name]) or
-							(not BigDebuffs.Spells[spellID]["no"..name] and 1)
+						local value = (BigDebuffs.db.profile.spells[spellName] and BigDebuffs.db.profile.spells[spellName][name]) or 
+							(not BigDebuffs.db.profile.spells[spellName] and 1) or (not BigDebuffs.db.profile.spells[spellName][name] and 1)
 						return value and value == 1
 					end,
 					set = function(info, value)
 						local name = info[#info]
-						BigDebuffs.db.profile.spells[spellID] = BigDebuffs.db.profile.spells[spellID] or {}
+						BigDebuffs.db.profile.spells[spellName] = BigDebuffs.db.profile.spells[spellName] or {}
 						value = value and 1 or 0
-						BigDebuffs.db.profile.spells[spellID][name] = value
+						BigDebuffs.db.profile.spells[spellName][name] = value
 
 						-- unset if default visibility
-						local no = BigDebuffs.Spells[spellID]["no"..name]
+						local no = BigDebuffs.Spells[spellName][name]
 						if (value == 1 and not no) or
 							(value == 0 and no) then
-							BigDebuffs.db.profile.spells[spellID][name] = nil
+							BigDebuffs.db.profile.spells[spellName][name] = nil
 						end
 						BigDebuffs:Refresh()
 					end,
@@ -83,10 +83,10 @@ for spellID, spell in pairs(BigDebuffs.Spells) do
 							type = "toggle",
 							order = 2,
 							set = function(info, value)
-								BigDebuffs.db.profile.spells[spellID] = BigDebuffs.db.profile.spells[spellID] or {}
-								BigDebuffs.db.profile.spells[spellID].customPriority = value
+								BigDebuffs.db.profile.spells[spellName] = BigDebuffs.db.profile.spells[spellName] or {}
+								BigDebuffs.db.profile.spells[spellName].customPriority = value
 								if not value then
-									BigDebuffs.db.profile.spells[spellID].priority = nil
+									BigDebuffs.db.profile.spells[spellName].priority = nil
 								end
 								BigDebuffs:Refresh()
 							end,
@@ -99,11 +99,11 @@ for spellID, spell in pairs(BigDebuffs.Spells) do
 							max = 100,
 							step = 1,
 							order = 3,
-							disabled = function() return not BigDebuffs.db.profile.spells[spellID] or not BigDebuffs.db.profile.spells[spellID].customPriority end,
+							disabled = function() return not BigDebuffs.db.profile.spells[spellName] or not BigDebuffs.db.profile.spells[spellName].customPriority end,
 							get = function(info)
 								-- Pull the category priority
-								return BigDebuffs.db.profile.spells[spellID] and BigDebuffs.db.profile.spells[spellID].priority and
-									BigDebuffs.db.profile.spells[spellID].priority or
+								return BigDebuffs.db.profile.spells[spellName] and BigDebuffs.db.profile.spells[spellName].priority and
+									BigDebuffs.db.profile.spells[spellName].priority or
 									BigDebuffs.db.profile.priority[spell.type]
 							end,
 						},
@@ -117,7 +117,7 @@ end
 function BigDebuffs:SetupOptions()
 	self.options = {
 		name = "BigDebuffs",
-		descStyle = "inline",
+		--descStyle = "inline",
 		type = "group",
 		plugins = {},
 		childGroups = "tab",
@@ -365,45 +365,6 @@ function BigDebuffs:SetupOptions()
 						desc = L["Enable BigDebuffs on the party frames"],
 						order = 5,
 					},
-					arena = {
-						type = "group",
-						disabled = function(info) return not self.db.profile[info[1]].enabled or (info[3] and not self.db.profile.unitFrames[info[2]].enabled) end,
-						get = function(info) local name = info[#info] return self.db.profile.unitFrames.arena[name] end,
-						set = function(info, value) local name = info[#info] self.db.profile.unitFrames.arena[name] = value self:Refresh() self:Refresh() end,
-						args = {
-							enabled = {
-								type = "toggle",
-								disabled = function(info) return not self.db.profile[info[1]].enabled end,
-								name = L["Enabled"],
-								order = 1,
-								width = "full",
-								desc = L["Enable BigDebuffs on the arena frames"],
-							},
-							anchor = {
-								name = L["Anchor"],
-								desc = L["Anchor to attach the BigDebuffs frames"],
-								type = "select",
-								values = {
-									["auto"] = L["Automatic"],
-									["manual"] = L["Manual"],
-								},
-								order = 2,
-							},
-							size = {
-								type = "range",
-								disabled = function(info) local name = info[2] return not self.db.profile.unitFrames[name].enabled or self.db.profile.unitFrames[name].anchor == "auto" end,
-								name = L["Size"],
-								desc = L["Set the size of the frame"],
-								min = 8,
-								max = 512,
-								step = 1,
-								order = 3,
-							},
-						},
-						name = L["Arena Frames"],
-						desc = L["Enable BigDebuffs on the arena frames"],
-						order = 6,
-					},
 					spells = {
 						order = 20,
 						name = L["Spells"],
@@ -571,10 +532,6 @@ function BigDebuffs:SetupOptions()
 	}
 
 	self.options.plugins.profiles = { profiles = LibStub("AceDBOptions-3.0"):GetOptionsTable(self.db) }
-	
-	local LibDualSpec = LibStub('LibDualSpec-1.0')
-	LibDualSpec:EnhanceDatabase(self.db, "BigDebuffsDB")
-	LibDualSpec:EnhanceOptions(self.options.plugins.profiles.profiles, self.db)
 
 	LibStub("AceConfig-3.0"):RegisterOptionsTable("BigDebuffs", self.options)
 end
