@@ -1,3 +1,5 @@
+**Note: This AddOn only works on the original 2.4.3 client, it does *not* work on TBC Classic.**
+
 # BigDebuffs
 
 BigDebuffs is an _extremely lightweight_ addon which replaces unit frame portraits with auras, stances and interrupts whenever present.
